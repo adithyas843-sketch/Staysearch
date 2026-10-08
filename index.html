@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cottage Finder</title>
+<style>
+:root{--bg:#f3f5ef;--ink:#1f2a22;--moss:#2f5d45;--muted:#66736a;--line:#d6ddd0;--card:#fff;--warn:#9a5b1f}
+@media(prefers-color-scheme:dark){:root{--bg:#141a16;--ink:#e6ece6;--moss:#7fc29b;--muted:#98a69c;--line:#2b362e;--card:#1b231e;--warn:#e0a35e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,serif}
+main{max-width:720px;margin:0 auto;padding:32px 18px 60px}
+h1{font-size:2rem;margin:0 0 4px}p.sub{color:var(--muted);margin:0 0 22px}
+form{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+input,button{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+input{flex:1 1 150px}button{background:var(--moss);color:#fff;border-color:var(--moss);cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--moss);border-radius:6px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:1.05rem;margin:0 0 4px}.card a{color:var(--ink)}
+.meta{color:var(--muted);font-size:.9rem}.tag{display:inline-block;font-size:.8rem;border:1px solid var(--line);border-radius:4px;padding:1px 7px;margin:6px 6px 0 0}
+.tag.bad{color:var(--warn)}#status{color:var(--muted);margin-bottom:14px}
+</style></head><body><main>
+<h1>Cottage Finder</h1>
+<p class="sub">Only standalone cottages. Every listing's description is read, and shared rooms are dropped.</p>
+<form id="f">
+  <input id="area" value="Madikeri, Coorg" aria-label="Area">
+  <input id="max" type="number" value="2500" aria-label="Max price per night in rupees">
+  <button>Find cottages</button>
+</form>
+<div id="status"></div><div id="out"></div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('f').onsubmit=async e=>{
+  e.preventDefault();$('out').innerHTML='';$('status').textContent='Searching and reading listings. This takes up to a minute.';
+  try{
+    const r=await fetch(`/api/search?area=${encodeURIComponent($('area').value)}&maxPrice=${$('max').value}`);
+    const d=await r.json();if(!r.ok)throw new Error(d.error);
+    $('status').textContent=`Read ${d.checked} pages, ${d.cottages.length} look like private cottages${d.deepRead?'':' (basic mode: add ANTHROPIC_API_KEY for deeper reading)'}.`;
+    $('out').innerHTML=d.cottages.map(c=>`<div class="card"><h2><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title)}</a></h2>
+      <div class="meta">${c.price?'From ₹'+c.price.toLocaleString('en-IN')+' per night (check dates on site)':'Price not found'}</div>
+      ${c.reason?`<div>${esc(c.reason)}</div>`:''}
+      ${c.pros.map(p=>`<span class="tag">${esc(p)}</span>`).join('')}${c.cons.map(p=>`<span class="tag bad">${esc(p)}</span>`).join('')}</div>`).join('')
+      ||'<p>No private cottages matched. Try a wider area or a higher budget.</p>';
+  }catch(err){$('status').textContent='Error: '+err.message}
+};
+</script></main></body></html>
